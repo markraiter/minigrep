@@ -1,4 +1,5 @@
 use std::{error::Error, fs, env};
+use regex::Regex;
 
 pub struct Config {
     pub query:     String,
@@ -29,11 +30,28 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         search_case_insensitive(&config.query, &contents)
     };
 
-    for line in results {
+    let highlighted_results = highlight(&config.query, results);
+
+    for line in highlighted_results {
         println!("{}", line);
     }
 
     Ok(())
+}
+
+pub fn highlight<'a>(query: &str, lines: Vec<&'a str>) -> Vec<String> {
+    let query_lowercase = query.to_lowercase();
+    let re = Regex::new(&format!("(?i){}", regex::escape(&query_lowercase))).unwrap();
+    let mut highlighted_lines = Vec::new();
+
+    for line in lines {
+        let highlighted_line = re.replace_all(line, |caps: &regex::Captures| {
+            format!("\x1b[31m{}\x1b[0m", &caps[0])
+        }).to_string();
+        highlighted_lines.push(highlighted_line);
+    }
+
+    highlighted_lines
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str>{
